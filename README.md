@@ -320,6 +320,92 @@ require manual approval — risk management via platform, not code.
 
 ------------------------------------------------------------------------
 
+# Unix Ecosystem as Toolchain
+
+Because the interface is the filesystem, every tool that works with
+files becomes a trading tool. TaFS does not need a CLI, a dashboard,
+or a client library — they already exist.
+
+## Remote access
+
+| Tool | Trading use |
+|---|---|
+| **SSH** | place an order from anywhere: `ssh server 'touch tradefs/spot/orders/7203.1.2858'` |
+| **SSHFS** | mount remote TaFS locally — laptop is a thin client, engine runs on server |
+| **NFS** | multiple traders on a LAN share one TaFS instance |
+| **SSH ForceCommand** | restrict users to file operations inside `/tradefs/` only |
+
+SSH key = trader identity. Authentication, authorization, and
+encryption in one tool.
+
+## Replication
+
+| Tool | Trading use |
+|---|---|
+| **rsync** | incremental sync between machines — disaster recovery, multi-site |
+| **rsync + cron** | periodic state replication without a daemon |
+| **scp** | copy a portfolio snapshot to another machine |
+
+## Scheduling
+
+| Tool | Trading use |
+|---|---|
+| **cron** | scheduled reconciliation, end-of-day commits |
+| **systemd timer** | same, with logging and failure recovery |
+| **systemd service** | engine as a managed daemon with watchdog and auto-restart |
+
+## Security
+
+| Tool | Trading use |
+|---|---|
+| **GPG** | sign git commits — non-repudiation, verified audit trail |
+| **SSH keys** | trader identity — who connected = who traded |
+| **chroot** | restrict the engine to only see `/tradefs/` |
+
+## Composition
+
+Standard Unix tools compose directly with TaFS:
+
+    ls orders/                        # list active orders
+    ls pf/                            # list positions
+    ls orders/ | wc -l                # count active orders
+    find orders/ -name "7203.*"       # find all Toyota orders
+    watch -n1 ls pf/                  # live position dashboard
+    diff <(ls pf/) <(ls orders/)     # compare intent vs state
+
+A Makefile becomes a trading CLI:
+
+    buy:
+        touch orders/$(TICKER).$(LOT).$(PRICE)
+    cancel:
+        rm orders/$(TICKER).*
+
+    $ make buy TICKER=7203 LOT=1 PRICE=2858
+
+A tmux session becomes a trading terminal:
+
+    ┌──────────────────┬──────────────────┐
+    │ watch ls orders/  │ watch ls pf/     │
+    ├──────────────────┼──────────────────┤
+    │ git log --oneline │ tail engine.log  │
+    └──────────────────┴──────────────────┘
+
+## Containers
+
+| Tool | Trading use |
+|---|---|
+| **Docker** | containerize the engine, mount TaFS as a volume |
+| **Docker Compose** | engine + broker adapters as services, shared volume |
+
+## Archival
+
+| Tool | Trading use |
+|---|---|
+| **zip/tar** | snapshot a portfolio and share it |
+| **git bundle** | full repo + history as a single file |
+
+------------------------------------------------------------------------
+
 # Architecture
 
     Filesystem + Git (desired state + history)
