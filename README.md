@@ -9,7 +9,7 @@ position state, and account state directly onto a filesystem.
 Instead of imperative API calls, TaFS treats trading as a **declarative
 desired-state system**.
 
-- **File = order**: `touch 7203.1.2858` to place, `rm` to cancel. No special tools needed
+- **File = order**: `touch AAPL.100.185p50` to place, `rm` to cancel. No special tools needed
 - **Directory structure is the data**: no YAML, no JSON. Filenames and directories are everything
 - **ls is your order book, git log is your trade history**: existing Unix commands become trading tools
 - **Git manages all history automatically**: full audit trail, rollback with `git revert`
@@ -24,20 +24,20 @@ desired-state system**.
 
 ## Quick Example
 
-    /tradefs/rakuten
+    /tradefs/ibkr
       spot/
         orders/
-          7203.1.2858
+          AAPL.100.185p50
         pf/
-          7203.2.2850
-        cash.1200000
+          AAPL.200.182p30
+        cash.50000
 
       margin/
         orders/
-          6758.-1.2950.o
+          TSLA.-50.248p00.o
         pf/
-          6758.-1.2940
-        marginfree.900000
+          TSLA.-50.245p60
+        marginfree.30000
 
 -   Creating files expresses **intent**
 -   File presence expresses **state**
@@ -149,16 +149,16 @@ A file is an atomic order. A directory is a compound order.
 
 ## Stop
 
-    orders/7203.1.2800.stp
+    orders/AAPL.100.175p00.stp
 
 Same grammar as basic orders — type expressed as a suffix, consistent
 with margin mode (`.o`, `.c`).
 
 ## OCO (One Cancels Other)
 
-    orders/7203.oco/
-      -1.2900
-      -1.2800.stp
+    orders/AAPL.oco/
+      -100.195p00
+      -100.175p00.stp
 
 The directory name carries the instrument code. Children inherit it
 and only specify what differs: lot, price, and type.
@@ -167,12 +167,12 @@ When one leg fills, the reconciliation engine cancels the other.
 
 ## IFDOCO (If Done, One Cancels Other)
 
-    orders/7203.ifdoco/
-      1.2858/
-        -1.2900
-        -1.2800.stp
+    orders/AAPL.ifdoco/
+      100.185p50/
+        -100.195p00
+        -100.175p00.stp
 
-The IF-leg (`1.2858/`) is a directory because it has dependents.
+The IF-leg (`100.185p50/`) is a directory because it has dependents.
 When it fills, its children activate as an OCO group.
 
 Nesting depth = dependency depth. No sequence prefixes needed.
@@ -341,7 +341,7 @@ or a client library — they already exist.
 
 | Tool | Trading use |
 |---|---|
-| **SSH** | place an order from anywhere: `ssh server 'touch tradefs/spot/orders/7203.1.2858'` |
+| **SSH** | place an order from anywhere: `ssh server 'touch tradefs/spot/orders/AAPL.100.185p50'` |
 | **SSHFS** | mount remote TaFS locally — laptop is a thin client, engine runs on server |
 | **NFS** | multiple traders on a LAN share one TaFS instance |
 | **SSH ForceCommand** | restrict users to file operations inside `/tradefs/` only |
@@ -380,7 +380,7 @@ Standard Unix tools compose directly with TaFS:
     ls orders/                        # list active orders
     ls pf/                            # list positions
     ls orders/ | wc -l                # count active orders
-    find orders/ -name "7203.*"       # find all Toyota orders
+    find orders/ -name "AAPL.*"       # find all Apple orders
     watch -n1 ls pf/                  # live position dashboard
     diff <(ls pf/) <(ls orders/)     # compare intent vs state
 
@@ -391,7 +391,7 @@ A Makefile becomes a trading CLI:
     cancel:
         rm orders/$(TICKER).*
 
-    $ make buy TICKER=7203 LOT=1 PRICE=2858
+    $ make buy TICKER=AAPL LOT=100 PRICE=185p50
 
 A tmux session becomes a trading terminal:
 
