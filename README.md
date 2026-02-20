@@ -110,11 +110,11 @@ Repeated reconciliation produces identical results.
 
 ## Orders
 
-    <code>.<signed_lot>[.<price>][.<mode>]
+    <code>.<signed_lot>[.<price>][.<suffix>]
 
 -   signed lot represents target exposure
 -   `p` used for decimal prices
--   mode (margin): `o` open, `c` close
+-   suffix: `o` open, `c` close (margin), `stp` stop
 
 ## Positions
 
@@ -134,22 +134,48 @@ Repeated reconciliation produces identical results.
 
 # Advanced Orders
 
+A file is an atomic order. A directory is a compound order.
+
 ## Stop
 
-    7203.1.stp_2800
+    orders/7203.1.2800.stp
 
-## OCO
+Same grammar as basic orders — type expressed as a suffix, consistent
+with margin mode (`.o`, `.c`).
 
-    orders/OCO_7203/
-      a.7203.-1.lmt_2900
-      b.7203.-1.stp_2800
+## OCO (One Cancels Other)
 
-## IFDOCO
+    orders/7203.oco/
+      -1.2900
+      -1.2800.stp
 
-    orders/IFDOCO_7203/
-      1.7203.1.lmt_2858
-      2a.7203.-1.lmt_2900
-      2b.7203.-1.stp_2800
+The directory name carries the instrument code. Children inherit it
+and only specify what differs: lot, price, and type.
+
+When one leg fills, the reconciliation engine cancels the other.
+
+## IFDOCO (If Done, One Cancels Other)
+
+    orders/7203.ifdoco/
+      1.2858/
+        -1.2900
+        -1.2800.stp
+
+The IF-leg (`1.2858/`) is a directory because it has dependents.
+When it fills, its children activate as an OCO group.
+
+Nesting depth = dependency depth. No sequence prefixes needed.
+
+## Key Properties
+
+-   **Code appears once** — the group directory scopes the instrument;
+    children inherit it
+-   **Nesting = dependency** — children activate when their parent fills;
+    the filesystem tree *is* the execution graph
+-   **Type as suffix** — `.stp`, `.o`, `.c` follow the same convention;
+    no price = market, plain price = limit
+-   **File = atomic order, directory = compound order** — one rule,
+    no special cases
 
 ------------------------------------------------------------------------
 
