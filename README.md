@@ -1,8 +1,10 @@
 # Trading as File System (TaFS)
 
-**TaFS (Trading as File System)** is an experimental architecture that
-maps trading intent, position state, and account state directly onto a
-filesystem.
+*`ls` is your query. `touch` is your API. `rm` is your cancel.
+Standard Unix tools are the client.*
+
+TaFS is an experimental architecture that maps trading intent,
+position state, and account state directly onto a filesystem.
 
 Instead of imperative API calls, TaFS treats trading as a **declarative
 desired-state system**.
@@ -280,6 +282,28 @@ What can be built on top (higher-level abstractions):
 -   watchlists and alerts
 -   signal ingestion from external systems
 -   AI-native controllers
+
+------------------------------------------------------------------------
+
+# Prior Art
+
+TaFS combines ideas from systems that use filesystem structure as a
+data model with the declarative reconciliation pattern from
+infrastructure-as-code. No existing system combines all three; no
+trading system uses this pattern.
+
+| System | What TaFS borrows |
+|---|---|
+| **cgroupfs** | `mkdir` creates a resource, `rmdir` destroys it — directory existence *is* the operation |
+| **Maildir** | one file = one message, filename = metadata, moving between directories = state transition |
+| **Plan 9 / 9P** | every resource has a filesystem interface — the structure is the schema |
+| **GitOps** | Git as single source of truth, continuous reconciliation toward desired state |
+| **Terraform** | declarative desired-state with explicit diff and apply |
+
+Where TaFS differs: Terraform and GitOps store data *in* file content
+(YAML, HCL). TaFS stores data *in* the filesystem structure itself —
+filenames, directories, presence, and absence. The filesystem is not
+a container for configuration; it is the configuration.
 
 ------------------------------------------------------------------------
 
