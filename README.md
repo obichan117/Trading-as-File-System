@@ -82,6 +82,23 @@ Local machine, VPS, network FS, or FUSE virtual filesystem.
 A reconciliation engine monitors filesystem changes and synchronizes
 broker state accordingly.
 
+```mermaid
+sequenceDiagram
+    actor Trader
+    participant FS as Filesystem
+    participant Engine as Reconciliation Engine
+    participant Broker
+
+    Trader->>FS: touch orders/AAPL.100.185p50
+    FS-->>Engine: file watcher event
+    Engine->>Broker: submit buy 100 AAPL @ 185.50
+    Broker-->>Engine: filled @ 185.50
+    Engine->>FS: rm orders/AAPL.100.185p50
+    Engine->>FS: touch pf/AAPL.100.185p50
+    Engine->>FS: update cash.*
+    Engine->>FS: git commit "Fill: AAPL 100 @ 185.50"
+```
+
 ## How Much
 
 Minimal: POSIX filesystem + watcher + execution engine.
@@ -195,6 +212,16 @@ Nesting depth = dependency depth. No sequence prefixes needed.
 The existing primitives already cover the full lifecycle — no
 additional directories needed.
 
+```mermaid
+stateDiagram-v2
+    [*] --> orders/ : touch (create file)
+    orders/ --> pf/ : Fill — engine moves to portfolio
+    orders/ --> [*] : Cancel — user deletes file
+    orders/ --> [*] : Reject — engine deletes, reason in commit
+    pf/ --> pf/ : Price update — engine renames file
+    pf/ --> [*] : Flat — position reaches zero, file removed
+```
+
 | Event    | Filesystem effect                                     |
 |----------|-------------------------------------------------------|
 | Submit   | file created in `orders/`                             |
@@ -292,6 +319,16 @@ When a TaFS repository is hosted on GitHub, the trading workflow
 maps onto GitHub's native features.
 
 ## Workflow
+
+```mermaid
+graph LR
+    A["Branch"] --> B["Add order files"]
+    B --> C["Open PR<br>(trade proposal)"]
+    C --> D["CI validates<br>grammar + risk"]
+    D --> E["Review<br>human / AI"]
+    E --> F["Merge"]
+    F --> G["Action calls broker<br>updates pf/, commits"]
+```
 
     1. Branch    → create feature branch
     2. Orders    → add/modify order files
@@ -419,11 +456,30 @@ A tmux session becomes a trading terminal:
 
 # Architecture
 
-    Filesystem + Git (desired state + history)
-            ↓
-    Reconciliation Engine (GitHub Actions / local daemon)
-            ↓
-    Broker
+```mermaid
+graph TD
+    subgraph "Control Plane (Filesystem + Git)"
+        O["orders/<br>desired state"]
+        P["pf/<br>actual state"]
+        A["cash.* / margin.*<br>account state"]
+        G["git log<br>audit trail"]
+    end
+
+    subgraph "Reconciliation Engine"
+        W["File watcher<br>fsevents / inotify"]
+        R["Reconciler<br>diff intent vs broker"]
+    end
+
+    B["Broker API<br>IBKR / etc."]
+
+    O -- "detect change" --> W
+    W --> R
+    R -- "submit / cancel" --> B
+    B -- "fill / reject" --> R
+    R -- "update state" --> P
+    R -- "update balance" --> A
+    R -- "commit" --> G
+```
 
 ------------------------------------------------------------------------
 
