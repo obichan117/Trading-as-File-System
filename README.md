@@ -247,11 +247,84 @@ trading are the same spec, same directory structure, different branches.
 
 ------------------------------------------------------------------------
 
+# Permissions as Authorization
+
+Filesystem permissions map directly to trading roles. No custom
+auth system needed — the OS enforces access control.
+
+## Role separation
+
+| Role | `orders/` | `pf/` | account state |
+|---|---|---|---|
+| Trader (human/AI) | `rwx` place/cancel | `r-x` view | `r--` view |
+| Engine (reconciler) | `r-x` read/act | `rwx` update | `rw-` update |
+| Viewer (dashboard) | `r-x` read | `r-x` read | `r--` read |
+
+Humans write to `orders/`. Only the engine writes to `pf/`.
+Enforced by the OS, not application code.
+
+## Useful primitives
+
+-   **Sticky bit** on `orders/` — only the creator of an order can
+    cancel it (same mechanism as `/tmp`)
+-   **chmod 444** on an order file — locked, cannot be canceled
+-   **chattr +i** — immutable flag for regulatory holds
+-   **Unix groups** — per-broker isolation, team access control
+-   **Engine as system user** — reconciler runs as `tafs-engine`,
+    like `nginx` or `postgres`
+
+------------------------------------------------------------------------
+
+# GitHub as Platform
+
+When a TaFS repository is hosted on GitHub, the trading workflow
+maps onto GitHub's native features.
+
+## Workflow
+
+    1. Branch    → create feature branch
+    2. Orders    → add/modify order files
+    3. PR        → trade proposal (diff = proposed trades)
+    4. CI        → Actions validate grammar, check risk
+    5. Review    → human or AI approves the trades
+    6. Merge     → triggers reconciliation Action
+    7. Sync      → Action calls broker, commits updated pf/
+
+A pull request *is* a trade proposal. The diff *is* the order book
+change. Code review *is* trade review.
+
+## Feature mapping
+
+| GitHub feature | Trading use |
+|---|---|
+| **Secrets** | broker API keys, per-environment credentials |
+| **Environments** | `production` = live broker, `paper` = simulation |
+| **Environment protection** | require approval before live trades execute |
+| **Actions (on push)** | reconciliation engine — merge triggers execution |
+| **Actions (scheduled)** | periodic sync of broker state back to `pf/` |
+| **Actions (CI)** | validate filename grammar, check risk limits |
+| **Branch protection** | require PR review before orders go live on `main` |
+| **Branches** | `main` = live, `paper` = simulation, feature branches = trade proposals |
+| **PR diff** | visual diff of proposed portfolio changes |
+| **PR comments** | discussion and rationale for trades |
+| **CODEOWNERS** | risk manager must approve certain instruments or lot sizes |
+
+## Environments as trading modes
+
+    production  → real broker, real money (Secrets: live API keys)
+    paper       → simulated fills, no real execution
+    backtest    → replay historical data against order files
+
+GitHub environment protection rules enforce that production trades
+require manual approval — risk management via platform, not code.
+
+------------------------------------------------------------------------
+
 # Architecture
 
     Filesystem + Git (desired state + history)
             ↓
-    Reconciliation Engine
+    Reconciliation Engine (GitHub Actions / local daemon)
             ↓
     Broker
 
