@@ -9,16 +9,16 @@ position state, and account state directly onto a filesystem.
 Instead of imperative API calls, TaFS treats trading as a **declarative
 desired-state system**.
 
-- **ファイル = 注文**: `touch 7203.1.2858` で注文、`rm` でキャンセル。専用ツール不要
-- **フォルダ構造がそのままデータ**: YAML や JSON を書く必要なし。ファイル名とディレクトリが全て
-- **ls が注文一覧、git log が取引履歴**: 既存の Unix コマンドがそのままトレーディングツールになる
-- **Git で全履歴を自動管理**: いつ何が起きたか全部残る。ロールバックも `git revert` 一発
-- **ブランチ = 取引モード**: `main` = 本番、`paper` = シミュレーション。同じ仕組みで切り替え
-- **OS のパーミッションがそのまま権限管理**: トレーダーは注文だけ、エンジンだけがポジション更新。自前の認証システム不要
-- **SSH でどこからでもトレード**: サーバーに SSH して `touch` するだけ
-- **GitHub Actions が自動売買エンジンになる**: PR = 取引提案、マージ = 発注、CI = リスクチェック
-- **既存インフラが全部使える**: rsync, cron, Docker, Make, tmux... ファイルを扱えるツールは全てトレーディングツール
-- **新しいものを発明していない**: POSIX + Git + GitHub。全て枯れた技術の組み合わせ
+- **File = order**: `touch 7203.1.2858` to place, `rm` to cancel. No special tools needed
+- **Directory structure is the data**: no YAML, no JSON. Filenames and directories are everything
+- **ls is your order book, git log is your trade history**: existing Unix commands become trading tools
+- **Git manages all history automatically**: full audit trail, rollback with `git revert`
+- **Branches = trading modes**: `main` = live, `paper` = simulation. Same structure, different branches
+- **OS permissions = access control**: traders can only write orders, only the engine updates positions. No custom auth
+- **SSH to trade from anywhere**: connect to the server and `touch` a file
+- **GitHub Actions becomes the execution engine**: PR = trade proposal, merge = execute, CI = risk check
+- **Entire existing infrastructure works**: rsync, cron, Docker, Make, tmux... any tool that handles files is a trading tool
+- **Nothing new invented**: POSIX + Git + GitHub. Battle-tested primitives, composed
 
 ------------------------------------------------------------------------
 
