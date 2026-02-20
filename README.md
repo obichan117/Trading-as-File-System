@@ -9,6 +9,17 @@ position state, and account state directly onto a filesystem.
 Instead of imperative API calls, TaFS treats trading as a **declarative
 desired-state system**.
 
+- **ファイル = 注文**: `touch 7203.1.2858` で注文、`rm` でキャンセル。専用ツール不要
+- **フォルダ構造がそのままデータ**: YAML や JSON を書く必要なし。ファイル名とディレクトリが全て
+- **ls が注文一覧、git log が取引履歴**: 既存の Unix コマンドがそのままトレーディングツールになる
+- **Git で全履歴を自動管理**: いつ何が起きたか全部残る。ロールバックも `git revert` 一発
+- **ブランチ = 取引モード**: `main` = 本番、`paper` = シミュレーション。同じ仕組みで切り替え
+- **OS のパーミッションがそのまま権限管理**: トレーダーは注文だけ、エンジンだけがポジション更新。自前の認証システム不要
+- **SSH でどこからでもトレード**: サーバーに SSH して `touch` するだけ
+- **GitHub Actions が自動売買エンジンになる**: PR = 取引提案、マージ = 発注、CI = リスクチェック
+- **既存インフラが全部使える**: rsync, cron, Docker, Make, tmux... ファイルを扱えるツールは全てトレーディングツール
+- **新しいものを発明していない**: POSIX + Git + GitHub。全て枯れた技術の組み合わせ
+
 ------------------------------------------------------------------------
 
 ## Quick Example
