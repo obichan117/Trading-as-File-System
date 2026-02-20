@@ -12,8 +12,6 @@ desired-state system**.
 ## Quick Example
 
     /tradefs/rakuten
-      .log/
-
       spot/
         orders/
           7203.1.2858
@@ -91,7 +89,7 @@ Filesystem becomes the single source of truth for intent and state.
 
     orders/ = desired
     pf/     = actual
-    .log/   = history
+    git log = history
 
 ## Idempotency
 
@@ -102,7 +100,7 @@ Repeated reconciliation produces identical results.
 -   create → submit
 -   delete → cancel
 -   rename → state transition
--   append → event stream
+-   commit → checkpoint
 
 ------------------------------------------------------------------------
 
@@ -179,13 +177,109 @@ Nesting depth = dependency depth. No sequence prefixes needed.
 
 ------------------------------------------------------------------------
 
+# Order Lifecycle
+
+The existing primitives already cover the full lifecycle — no
+additional directories needed.
+
+| Event    | Filesystem effect                                     |
+|----------|-------------------------------------------------------|
+| Submit   | file created in `orders/`                             |
+| Fill     | file removed from `orders/`, `pf/` updated           |
+| Cancel   | user deletes file from `orders/`                      |
+| Reject   | engine deletes file from `orders/`, reason in commit message |
+
+`orders/` is pure intent. `pf/` is pure state. `git log` is history.
+The directory tree only reflects what is true right now.
+
+Per-order risk management is expressed through compound orders — an
+IFDOCO is a risk-managed position (entry with profit target and stop
+loss built in).
+
+------------------------------------------------------------------------
+
+# Primitives
+
+TaFS does not invent new infrastructure. It maps trading onto
+primitives that already exist in POSIX filesystems and Git.
+
+## Filesystem
+
+| Primitive | Trading use |
+|---|---|
+| File create/delete | order submit / cancel |
+| Atomic rename (`mv`) | state transition without race conditions |
+| Directories | namespaces (broker, asset class) and compound orders |
+| Nesting | dependency between order legs |
+| Permissions (`chmod 444`) | lock an order — prevent accidental cancel |
+| Timestamps (`mtime`) | submission time, last update — free metadata |
+| Symlinks | aliases, cross-references between orders and positions |
+| Extended attributes (`xattr`) | hidden metadata (broker order ID, notes) |
+| File watchers (`fsevents`/`inotify`) | reconciliation engine trigger |
+| File content | optional annotation (filename is identity, content is metadata) |
+| Dotfiles | config and metadata that don't affect trading state |
+| Mount points | different brokers as different mounts |
+
+## Git
+
+The TaFS directory is a Git repository. Git replaces custom logging
+and provides audit, branching, and time-travel for free.
+
+| Primitive | Trading use |
+|---|---|
+| Commits | reconciliation checkpoints — atomic state snapshots |
+| Commit messages | event descriptions (fill, rejection reason) |
+| `git log` | full audit trail — replaces `.log/` |
+| `git diff` | what changed between any two points |
+| `git blame` | what created or modified each order |
+| `git revert` | undo a specific change |
+| `git bisect` | find when something went wrong |
+| **Branches** | `main` = live, `paper` = simulation, `backtest/2024q1` = replay |
+| Tags | milestones — end of trading day, strategy change points |
+| Hooks | `pre-commit` validates order grammar, `post-commit` triggers engine |
+| Worktrees | multiple strategies running in parallel from one repo |
+
+Branches are especially powerful: paper trading, backtesting, and live
+trading are the same spec, same directory structure, different branches.
+`git diff main..paper` compares simulated vs live portfolio.
+
+------------------------------------------------------------------------
+
 # Architecture
 
-    Filesystem (desired state)
+    Filesystem + Git (desired state + history)
             ↓
     Reconciliation Engine
             ↓
     Broker
+
+------------------------------------------------------------------------
+
+# Scope
+
+TaFS is a **filesystem representation spec** — it defines how trading
+intent and state map onto files and directories.
+
+What belongs in the filesystem (this spec):
+
+-   order intent (`orders/`)
+-   position state (`pf/`)
+-   account state (`cash.*`, `marginfree.*`, `equity.*`)
+-   history (`git log`)
+
+What belongs in the engine (implementation concern):
+
+-   risk limits (max exposure, daily loss caps)
+-   execution policies (TWAP, VWAP, slicing)
+-   broker configuration and credentials
+-   drift detection and error recovery
+
+What can be built on top (higher-level abstractions):
+
+-   target allocation (desired portfolio → engine generates orders)
+-   watchlists and alerts
+-   signal ingestion from external systems
+-   AI-native controllers
 
 ------------------------------------------------------------------------
 
@@ -204,17 +298,17 @@ Nesting depth = dependency depth. No sequence prefixes needed.
 
 -   reconciliation complexity
 -   drift detection required
--   complex conditional orders need grouping
+-   compound orders need nesting
 -   not suited for HFT
 
 ------------------------------------------------------------------------
 
 # Future Directions
 
--   FUSE trading filesystem
+-   FUSE virtual trading filesystem
 -   multi-broker reconciliation
--   Git time-travel state
 -   AI-native controllers
+-   target allocation layer (declare desired portfolio, engine converges)
 
 ------------------------------------------------------------------------
 
